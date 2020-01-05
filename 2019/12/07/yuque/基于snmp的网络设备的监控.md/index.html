@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+  
+  
+    
+    
+  <script src="/lib/pace/pace.min.js?v=1.0.2"></script>
+  <link rel="stylesheet" href="/lib/pace/pace-theme-center-atom.min.css?v=1.0.2">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link rel="stylesheet" href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5">
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=6.7.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.7.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.7.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.7.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.7.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '6.7.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":true,"scrollpercent":true,"onmobile":false},
+    fancybox: true,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="介绍公司当前环境下有基于prometheus的监控体系，覆盖了所有的服务器和虚拟机，但是还没有包含网络设备，例如交换机或者防火墙，因此，需要补充网络设备监控部分  相关信息prometheus： 监控系统，负责指标的收取和一些告警规则的定义snmp-exporter: 用于通过snmp协议暴露交换机的相关指标SNMP Exporter Config Generator： 此配置生成器使用NetS">
+<meta property="og:type" content="article">
+<meta property="og:title" content="基于snmp的网络设备的监控.md">
+<meta property="og:url" content="https://imdingtalk.github.io/2019/12/07/yuque/基于snmp的网络设备的监控.md/index.html">
+<meta property="og:site_name" content="不知道叫什么名儿">
+<meta property="og:description" content="介绍公司当前环境下有基于prometheus的监控体系，覆盖了所有的服务器和虚拟机，但是还没有包含网络设备，例如交换机或者防火墙，因此，需要补充网络设备监控部分  相关信息prometheus： 监控系统，负责指标的收取和一些告警规则的定义snmp-exporter: 用于通过snmp协议暴露交换机的相关指标SNMP Exporter Config Generator： 此配置生成器使用NetS">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2020-01-05T07:27:05.508Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="基于snmp的网络设备的监控.md">
+<meta name="twitter:description" content="介绍公司当前环境下有基于prometheus的监控体系，覆盖了所有的服务器和虚拟机，但是还没有包含网络设备，例如交换机或者防火墙，因此，需要补充网络设备监控部分  相关信息prometheus： 监控系统，负责指标的收取和一些告警规则的定义snmp-exporter: 用于通过snmp协议暴露交换机的相关指标SNMP Exporter Config Generator： 此配置生成器使用NetS">
+
+
+
+
+
+
+  <link rel="canonical" href="https://imdingtalk.github.io/2019/12/07/yuque/基于snmp的网络设备的监控.md/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>基于snmp的网络设备的监控.md | 不知道叫什么名儿</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">不知道叫什么名儿</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <h1 class="site-subtitle" itemprop="description">善始者众 善终者寡</h1>
+      
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-guestbook">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/guestbook" rel="section"><i class="menu-item-icon fa fa-fw fa-heartbeat"></i> <br>留言板</a>
+
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br>搜索</a>
+        </li>
+      
+    </ul>
+  
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off" placeholder="搜索..." spellcheck="false" type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://imdingtalk.github.io/2019/12/07/yuque/基于snmp的网络设备的监控.md/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="I'm Jack biao">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不知道叫什么名儿">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h2 class="post-title" itemprop="name headline">基于snmp的网络设备的监控.md
+
+              
+            
+          </h2>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-12-07 04:39:03" itemprop="dateCreated datePublished" datetime="2019-12-07T04:39:03+00:00">2019-12-07</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2020-01-05 07:27:05" itemprop="dateModified" datetime="2020-01-05T07:27:05+00:00">2020-01-05</time>
+              
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/12/07/yuque/基于snmp的网络设备的监控.md/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2019/12/07/yuque/基于snmp的网络设备的监控.md/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+            <span id="/2019/12/07/yuque/基于snmp的网络设备的监控.md/" class="leancloud_visitors" data-flag-title="基于snmp的网络设备的监控.md">
+              <span class="post-meta-divider">|</span>
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              
+                <span class="post-meta-item-text">阅读次数：</span>
+              
+                <span class="leancloud-visitors-count"></span>
+            </span>
+          
+
+          
+
+          
+            <div class="post-symbolscount">
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">本文字数：</span>
+                
+                <span title="本文字数">34k</span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">31 分钟</span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p><a name="61a3ec66"></a></p>
+<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>公司当前环境下有基于prometheus的监控体系，覆盖了所有的服务器和虚拟机，但是还没有包含网络设备，例如交换机或者防火墙，因此，需要补充网络设备监控部分</p>
+<p><a name="92bec8d9"></a></p>
+<h2 id="相关信息"><a href="#相关信息" class="headerlink" title="相关信息"></a>相关信息</h2><p>prometheus： 监控系统，负责指标的收取和一些告警规则的定义<br>snmp-exporter: 用于通过snmp协议暴露交换机的相关指标<br>SNMP Exporter Config Generator： 此配置生成器使用NetSNMP解析MIB，并使用它们为snmp_exporter生成配置–帮助生成snmp的配置文件<br>MIB和OID： MIB是管理信息库的缩写，它是用于管理通信网络中的实体的数据库。数据库是分层的（树形结构），并且每个条目都通过对象标识符（OID）进行寻址<br>snmp协议： SNMP 是专门设计用于在 IP 网络管理网络节点（服务器、工作站、路由器、交换机及HUBS等）的一种标准协议</p>
+<p><a name="a9f94dcd"></a></p>
+<h2 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h2><p><a name="e8030dd8"></a></p>
+<h3 id="网络设备使能snmp-agent"><a href="#网络设备使能snmp-agent" class="headerlink" title="网络设备使能snmp agent"></a>网络设备使能snmp agent</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">system-view</span><br><span class="line">[Sysname] snmp-agent sys-info version v3 v2c</span><br><span class="line">//为了安全，最好只设置只读</span><br><span class="line">[Sysname] snmp-agent community <span class="built_in">read</span> xxxx</span><br><span class="line"><span class="comment">## 测试</span></span><br><span class="line">yum -y install net-snmp-utils  </span><br><span class="line">snmpwalk -v 2c（snmp的版本） -c xxxx(前面snmp-agent设置的密码) 10.10.1.1（交换机管理ip） .1.3.6.1.2.1.25.2.2（mib信息，需要查对应的厂家的mib信息库）  <span class="comment">#取得系统总内存  </span></span><br><span class="line"><span class="comment">#如果能获取到返回信息，则snmp已经可以正常工作</span></span><br></pre></td></tr></table></figure>
+<p><a name="557be2e2"></a></p>
+<h3 id="使用snmp-exporter抓取snmp-agent的信息"><a href="#使用snmp-exporter抓取snmp-agent的信息" class="headerlink" title="使用snmp-exporter抓取snmp-agent的信息"></a>使用snmp-exporter抓取snmp-agent的信息</h3><p>snmp-exporter：<a href="https://github.com/prometheus/snmp_exporter" target="_blank" rel="noopener">https://github.com/prometheus/snmp_exporter</a><br>使用snmp-exporter的关键是配置snmp-exporter的配置文件，默认有一个配置文件，但是里面涉及的信息基本都是国外交换机的配置，不能直接使用</p>
+<p><a name="snmp.yml"></a></p>
+<h4 id="snmp-yml"><a href="#snmp-yml" class="headerlink" title="snmp.yml"></a>snmp.yml</h4><p>典型的一个配置如下（部分）</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># WARNING: This file was auto-generated using snmp_exporter generator, manual changes will be lost.</span></span><br><span class="line"><span class="attr">apcups:</span></span><br><span class="line">  <span class="attr">walk:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.4</span><span class="number">.1</span><span class="number">.318</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.12</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.4</span><span class="number">.1</span><span class="number">.318</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.2</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.4</span><span class="number">.1</span><span class="number">.318</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.3</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.4</span><span class="number">.1</span><span class="number">.318</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.4</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.4</span><span class="number">.1</span><span class="number">.318</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.7</span><span class="number">.2</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.4</span><span class="number">.1</span><span class="number">.318</span><span class="number">.1</span><span class="number">.1</span><span class="number">.10</span><span class="number">.2</span><span class="number">.3</span><span class="number">.2</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.4</span><span class="number">.1</span><span class="number">.318</span><span class="number">.1</span><span class="number">.1</span><span class="number">.26</span><span class="number">.8</span><span class="number">.3</span></span><br><span class="line">  <span class="attr">get:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.1</span><span class="number">.3</span><span class="number">.0</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.4</span><span class="number">.1</span><span class="number">.318</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.8</span><span class="number">.1</span><span class="number">.0</span></span><br><span class="line">  <span class="attr">metrics:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">sysUpTime</span></span><br><span class="line">    <span class="attr">oid:</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.1</span><span class="number">.3</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">gauge</span></span><br><span class="line">    <span class="attr">help:</span> <span class="string">The</span> <span class="string">time</span> <span class="string">(in</span> <span class="string">hundredths</span> <span class="string">of</span> <span class="string">a</span> <span class="string">second)</span> <span class="string">since</span> <span class="string">the</span> <span class="string">network</span> <span class="string">management</span> <span class="string">portion</span></span><br><span class="line">      <span class="string">of</span> <span class="string">the</span> <span class="string">system</span> <span class="string">was</span> <span class="string">last</span> <span class="string">re-initialized.</span> <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.1</span><span class="number">.3</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">ifNumber</span></span><br><span class="line">    <span class="attr">oid:</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">gauge</span></span><br><span class="line">    <span class="attr">help:</span> <span class="string">The</span> <span class="string">number</span> <span class="string">of</span> <span class="string">network</span> <span class="string">interfaces</span> <span class="string">(regardless</span> <span class="string">of</span> <span class="string">their</span> <span class="string">current</span> <span class="string">state)</span> <span class="string">present</span></span><br><span class="line">      <span class="string">on</span> <span class="string">this</span> <span class="string">system.</span> <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">ifIndex</span></span><br><span class="line">    <span class="attr">oid:</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.1</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">gauge</span></span><br><span class="line">    <span class="attr">help:</span> <span class="string">A</span> <span class="string">unique</span> <span class="string">value,</span> <span class="string">greater</span> <span class="string">than</span> <span class="string">zero,</span> <span class="string">for</span> <span class="string">each</span> <span class="string">interface</span> <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.1</span></span><br><span class="line">    <span class="attr">indexes:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">labelname:</span> <span class="string">ifIndex</span></span><br><span class="line">      <span class="attr">type:</span> <span class="string">gauge</span></span><br><span class="line">      <span class="string">........</span></span><br><span class="line">      <span class="string">........</span></span><br><span class="line">      <span class="string">........</span></span><br><span class="line">      <span class="comment">#默认的完整配置高达17000行~</span></span><br></pre></td></tr></table></figure>
+<p>这样的配置文件，显然不是我们需要手动配置的，因为文件的第一行已经声明了，这个配置文件是用工具生成的；如果不用工具，我们需要从mib中找到对应的oid信息在这里配置。。。太难了<br>，还有没有更简单的方法？</p>
+<p><a name="45ae74cb"></a></p>
+<h4 id="snmp-exporter-generator"><a href="#snmp-exporter-generator" class="headerlink" title="snmp-exporter generator"></a>snmp-exporter generator</h4><p>Prometheus team特此准备了snmp-exporter generator一个专门用于生成snmp-exporter的工具<br>Generator: <a href="https://github.com/prometheus/snmp_exporter/tree/master/generator" target="_blank" rel="noopener">Generator</a></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">安装</span><br><span class="line"> sudo yum install gcc gcc-g++ make net-snmp net-snmp-utils net-snmp-libs net-snmp-devel # RHEL-based distros</span><br><span class="line">go get github.com/prometheus/snmp_exporter/generator</span><br><span class="line">cd $&#123;GOPATH-$HOME/go&#125;/src/github.com/prometheus/snmp_exporter/generator</span><br><span class="line">go build</span><br><span class="line">make mibs</span><br><span class="line">使用</span><br><span class="line">export MIBDIRS=mibs</span><br><span class="line">./generator generate</span><br><span class="line">它会根据generator.yml的配置来生成配置文件，generator.yml的配置就简单多了</span><br></pre></td></tr></table></figure>
+<p><a name="generator.yml"></a></p>
+<h5 id="generator-yml"><a href="#generator-yml" class="headerlink" title="generator.yml"></a>generator.yml</h5><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">modules:</span></span><br><span class="line">  <span class="attr">huawei:</span></span><br><span class="line">    <span class="attr">walk:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">hwDev</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.1</span><span class="number">.3</span>   <span class="comment">#sysUpTime</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.31</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.10</span> <span class="comment">#ifHCOutOctets</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.14</span> <span class="comment">#ifInErrors</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.20</span> <span class="comment">#ifOutErrors</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.31</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.6</span> <span class="comment">#ifHCInOctets</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.21</span> <span class="comment">#ifOutQLen</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.13</span> <span class="comment">#ifInDiscards</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.19</span> <span class="comment">#ifOutDiscards</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.7</span> <span class="comment">#ifAdminStatus</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.8</span> <span class="comment">#ifOperStatus</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span> <span class="comment">#ifDescr</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.31</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span> <span class="comment">#ifName</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.5</span> <span class="comment">#ifSpeed</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.31</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.15</span> <span class="comment">#ifHighSpeed</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.31</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.18</span> <span class="comment">#ifAlias</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.2</span><span class="number">.2</span><span class="number">.1</span><span class="number">.3</span> <span class="comment">#ifType</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.31</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.11</span> <span class="comment">#ifHCOutUcastPkts</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.31</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.7</span> <span class="comment">#ifHCInUcastPkts</span></span><br><span class="line">    <span class="comment">##定义数据中需要的额外的labels</span></span><br><span class="line">    <span class="attr">lookups:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">source_indexes:</span> <span class="string">[ifIndex]</span></span><br><span class="line">        <span class="attr">lookup:</span> <span class="string">ifAlias</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">source_indexes:</span> <span class="string">[ifIndex]</span></span><br><span class="line">        <span class="attr">lookup:</span> <span class="string">ifDescr</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">source_indexes:</span> <span class="string">[ifIndex]</span></span><br><span class="line">        <span class="comment"># Use OID to avoid conflict with Netscaler NS-ROOT-MIB.</span></span><br><span class="line">        <span class="attr">lookup:</span> <span class="number">1.3</span><span class="number">.6</span><span class="number">.1</span><span class="number">.2</span><span class="number">.1</span><span class="number">.31</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span><span class="number">.1</span> <span class="comment"># ifName</span></span><br><span class="line">    <span class="attr">overrides:</span></span><br><span class="line">      <span class="attr">ifAlias:</span></span><br><span class="line">        <span class="attr">ignore:</span> <span class="literal">true</span> <span class="comment"># Lookup metric</span></span><br><span class="line">      <span class="attr">ifDescr:</span></span><br><span class="line">        <span class="attr">ignore:</span> <span class="literal">true</span> <span class="comment"># Lookup metric</span></span><br><span class="line">      <span class="attr">ifName:</span></span><br><span class="line">        <span class="attr">ignore:</span> <span class="literal">true</span> <span class="comment"># Lookup metric</span></span><br><span class="line">      <span class="attr">ifType:</span></span><br><span class="line">        <span class="attr">type:</span> <span class="string">EnumAsInfo</span></span><br><span class="line">    <span class="attr">version:</span> <span class="number">2</span></span><br><span class="line">    <span class="attr">auth:</span></span><br><span class="line">      <span class="attr">community:</span> <span class="string">xxxx(snmp-agent设置的密码)</span></span><br></pre></td></tr></table></figure>
+<p>这里的oid信息就可以根据具体的厂商去查找了，例如华为： <a href="https://support.huawei.com/enterprise/zh/doc/EDOC1000178142/948603b1" target="_blank" rel="noopener">https://support.huawei.com/enterprise/zh/doc/EDOC1000178142/948603b1</a><br>填写在配置文件的walk区域<br>定义lookups和overrides给抓取的数据添加一些我们需要的labels<br>定义auth和version信息，这个是是我们交换机前面已经设置好的<br>这里只定义了我们需要walk的oid信息，但是实体信息是在mib里面的，比如</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">hwDev 来自 HUAWEI-MIB;</span><br><span class="line">hwFrameIndex, hwSlotIndex 来自 HUAWEI-DEVICE-MIB;</span><br><span class="line">OBJECT-GROUP, MODULE-COMPLIANCE 来自 SNMPv2-CONF;</span><br><span class="line">Gauge, OBJECT-TYPE, MODULE-IDENTITY 来自 SNMPv2-SMI.</span><br><span class="line">等等</span><br></pre></td></tr></table></figure>
+<p>那么mib在哪里有呢，这里提供了大量的mib库，<a href="https://github.com/librenms/librenms/blob/master/mibs" target="_blank" rel="noopener">https://github.com/librenms/librenms/blob/master/mibs</a><br>在生成配置文件的时候，会尝试读取本地的mib库，$HOME/.snmp/mibs，因此我们把所需要的mib信息放在此处： $HOME/.snmp/mibs</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">[root@opsmanager ~]# ll $HOME/.snmp/mibs</span><br><span class="line">total 636</span><br><span class="line">-rw-r--r-- 1 root root   7440 Nov 13 10:14 HUAWEI-CPU-MIB</span><br><span class="line">-rw-r--r-- 1 root root 351413 Nov 13 10:14 HUAWEI-DEVICE-MIB</span><br><span class="line">-rw-r--r-- 1 root root   9967 Nov 13 10:12 HUAWEI-MEMORY-MIB</span><br><span class="line">-rw-r--r-- 1 root root 146824 Nov 13 10:12 HUAWEI-MIB</span><br><span class="line">-rw-r--r-- 1 root root  71691 Nov 13 21:58 IF-MIB</span><br><span class="line">-rw-r--r-- 1 root root   8263 Nov 13 10:16 SNMPv2-CONF</span><br><span class="line">-rw-r--r-- 1 root root  29305 Nov 13 10:16 SNMPv2-MIB</span><br><span class="line">-rw-r--r-- 1 root root   8924 Nov 13 10:16 SNMPv2-SMI</span><br></pre></td></tr></table></figure>
+<p>配置文件准备完毕，直接生成配置文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[root@opsmanager snmp_exporter]# ./generator generate</span><br><span class="line">INFO[0000] Loading MIBs from $HOME/.snmp/mibs:/usr/share/snmp/mibs  source=&quot;net_snmp.go:141&quot;</span><br><span class="line">WARN[0000] NetSNMP reported 7 parse errors               source=&quot;main.go:103&quot;</span><br><span class="line">INFO[0000] Generating config for module huawei           source=&quot;main.go:49&quot;</span><br><span class="line">INFO[0000] Generated 310 metrics for module huawei       source=&quot;main.go:60&quot;</span><br><span class="line">INFO[0000] Config written to /opt/snmp_exporter/snmp.yml  source=&quot;main.go:85&quot;</span><br></pre></td></tr></table></figure>
+<p>我们可以直接使用生成的配置文件启动，snmp-exporter<br><code>nohup snmp-exporter &amp;</code></p>
+<p>验证页面<br><a href="http://xx.xx.xx.xx:9116" target="_blank" rel="noopener">http://xx.xx.xx.xx:9116</a><br>输入generator配置里面的模块名称和想要抓取的目标网络设备的ip，即可查看抓取的所有指标</p>
+<p><a name="9a53e8f9"></a></p>
+<h3 id="将指标接入prometheus"><a href="#将指标接入prometheus" class="headerlink" title="将指标接入prometheus"></a>将指标接入prometheus</h3><p>直接使用默认配置即可</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">scrape_configs:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">'snmp'</span></span><br><span class="line">    <span class="attr">static_configs:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">targets:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="number">192.168</span><span class="number">.1</span><span class="number">.2</span>  <span class="comment"># SNMP device.</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">xx.xx.xx.xx</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">.....</span></span><br><span class="line">    <span class="attr">metrics_path:</span> <span class="string">/snmp</span></span><br><span class="line">    <span class="attr">params:</span></span><br><span class="line">      <span class="attr">module:</span> <span class="string">[if_mib]</span></span><br><span class="line">    <span class="attr">relabel_configs:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">source_labels:</span> <span class="string">[__address__]</span></span><br><span class="line">        <span class="attr">target_label:</span> <span class="string">__param_target</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">source_labels:</span> <span class="string">[__param_target]</span></span><br><span class="line">        <span class="attr">target_label:</span> <span class="string">instance</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">target_label:</span> <span class="string">__address__</span></span><br><span class="line">        <span class="attr">replacement:</span> <span class="string">xx.xx.xx.xx:9116</span>  <span class="comment"># The SNMP exporter's real hostname:port.</span></span><br></pre></td></tr></table></figure>
+<p>重新加载prometheus的配置<br><code>curl -X POST http://xx.xxx.xx.xx:9090/-/reload</code></p>
+<p>接下来就是基于这些指标的绘图和告警设置了</p>
+<p><a name="sYVJr"></a></p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="http://devopstarter.info/snmp-exporter-generator-tutorial/" target="_blank" rel="noopener">http://devopstarter.info/snmp-exporter-generator-tutorial/</a>   <br><a href="https://github.com/prometheus/snmp_exporter" target="_blank" rel="noopener">https://github.com/prometheus/snmp_exporter</a>   <br><a href="https://github.com/prometheus/snmp_exporter/tree/master/generator" target="_blank" rel="noopener">https://github.com/prometheus/snmp_exporter/tree/master/generator</a>  <br><a href="https://github.com/librenms/librenms/tree/master/mibs" target="_blank" rel="noopener">https://github.com/librenms/librenms/tree/master/mibs</a>  <br><a href="https://www.cnblogs.com/guoxiangyue/p/11778217.html" target="_blank" rel="noopener">https://www.cnblogs.com/guoxiangyue/p/11778217.html</a>  <br><a href="https://www.cnblogs.com/--smile/p/11086770.html" target="_blank" rel="noopener">https://www.cnblogs.com/–smile/p/11086770.html</a>  <br><a href="https://support.huawei.com/enterprise/zh/doc/EDOC1000141473/40dfdfef" target="_blank" rel="noopener">https://support.huawei.com/enterprise/zh/doc/EDOC1000141473/40dfdfef</a>  <br><a href="https://support.huawei.com/enterprise/zh/doc/EDOC1000178142/948603b1" target="_blank" rel="noopener">https://support.huawei.com/enterprise/zh/doc/EDOC1000178142/948603b1</a>  </p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>如果你觉得本文对你有帮助，或者想对我微小的工作一点资瓷，欢迎给我捐赠</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/wechat.png" alt="I'm Jack biao 微信支付">
+        <p>微信支付</p>
+      </div>
+    
+
+    
+      <div id="alipay" style="display: inline-block">
+        <img id="alipay_qr" src="/images/alipay.png" alt="I'm Jack biao 支付宝">
+        <p>支付宝</p>
+      </div>
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/11/30/yuque/ELK相关的那些东东/" rel="next" title="ELK相关的那些东东">
+                <i class="fa fa-chevron-left"></i> ELK相关的那些东东
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/12/09/yuque/influxdb相关的/" rel="prev" title="influxdb相关的">
+                influxdb相关的 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">I'm Jack biao</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">54</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">4</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">9</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/imdingtalk" title="GitHub &rarr; https://github.com/imdingtalk" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:dinghahat9458@gmail.com" title="E-Mail &rarr; mailto:dinghahat9458@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-NoName"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#介绍"><span class="nav-number">1.</span> <span class="nav-text">介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#相关信息"><span class="nav-number">2.</span> <span class="nav-text">相关信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#部署"><span class="nav-number">3.</span> <span class="nav-text">部署</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#网络设备使能snmp-agent"><span class="nav-number">3.1.</span> <span class="nav-text">网络设备使能snmp agent</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用snmp-exporter抓取snmp-agent的信息"><span class="nav-number">3.2.</span> <span class="nav-text">使用snmp-exporter抓取snmp-agent的信息</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#snmp-yml"><span class="nav-number">3.2.1.</span> <span class="nav-text">snmp.yml</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#snmp-exporter-generator"><span class="nav-number">3.2.2.</span> <span class="nav-text">snmp-exporter generator</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#generator-yml"><span class="nav-number">3.2.2.1.</span> <span class="nav-text">generator.yml</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#将指标接入prometheus"><span class="nav-number">3.3.</span> <span class="nav-text">将指标接入prometheus</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+        <div class="back-to-top">
+          <i class="fa fa-arrow-up"></i>
+          
+            <span id="scrollpercent"><span>0</span>%</span>
+          
+        </div>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-heartbeat"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">I'm Jack biao</span>
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    
+      <span class="post-meta-item-text">站点总字数：</span>
+    
+    <span title="站点总字数">93k</span>
+  
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    
+    <span title="站点阅读时长">1:25</span>
+  
+</div>
+
+
+
+
+
+
+
+
+<span id="timeDate">载入天数...</span><span id="times">载入时分秒...</span>
+<script>
+    var now = new Date(); 
+    function createtime() { 
+        var grt= new Date("10/01/2018 17:20:00");
+        now.setTime(now.getTime()+250); 
+        days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days); 
+        hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours); 
+        if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum); 
+        mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;} 
+        seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum); 
+        snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;} 
+        document.getElementById("timeDate").innerHTML = "本站已安全运行 "+dnum+" 天 "; 
+        document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒"; 
+    } 
+setInterval("createtime()",250);
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js">
+</script>
+本站总访问量<span id="busuanzi_value_site_pv"></span>次
+您是小站的第<span id="busuanzi_value_site_uv"></span>个小伙伴
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+  
+    
+    
+      
+    
+  
+  <script color="0,0,255" opacity="0.5" zindex="-1" count="99" src="//cdn.jsdelivr.net/gh/theme-next/theme-next-canvas-nest@1.0.0/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=6.7.0"></script>
+
+  <script src="/js/src/motion.js?v=6.7.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=6.7.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=6.7.0"></script>
+
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=6.7.0"></script>
+<script src="/js/src/post-details.js?v=6.7.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=6.7.0"></script>
+
+
+
+  
+  
+
+
+
+
+  
+
+<script src="//cdn1.lncld.net/static/js/3.11.1/av-min.js"></script>
+
+
+
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+
+<script>
+  var GUEST = ['nick', 'mail', 'link'];
+  var guest = 'nick,mail';
+  guest = guest.split(',').filter(function (item) {
+    return GUEST.indexOf(item) > -1;
+  });
+  new Valine({
+    el: '#comments',
+    verify: false,
+    notify: false,
+    appId: 'YsnVS7bjx1fXUBde0DpJXsHz-MdYXbMMI',
+    appKey: 'UeHdDHsbsKoE39s4ME4GnSFc',
+    placeholder: '欢迎评论，指正，俺会回复哒',
+    avatar: 'mm',
+    meta: guest,
+    pageSize: '10' || 10,
+    visitor: true
+  });
+</script>
+
+
+
+  
+
+  <script>
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url).replace(/\/{2,}/g, '/');
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x"></i></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x"></i></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  <!--打字特效-->
+  
+
+  <script src="/js/activate-power-mode.min.js"></script>
+  <script>
+    POWERMODE.colorful = true;
+    POWERMODE.shake = true;
+    document.body.addEventListener('input', POWERMODE);
+  </script>
+
+
+  <!--崩溃欺骗-->
+  <script type="text/javascript" src="/js/src/crash_cheat.js"></script>
+</body>
+</html>

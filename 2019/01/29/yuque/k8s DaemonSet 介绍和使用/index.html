@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+  
+  
+    
+    
+  <script src="/lib/pace/pace.min.js?v=1.0.2"></script>
+  <link rel="stylesheet" href="/lib/pace/pace-theme-center-atom.min.css?v=1.0.2">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link rel="stylesheet" href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5">
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=6.7.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.7.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.7.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.7.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.7.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '6.7.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":true,"scrollpercent":true,"onmobile":false},
+    fancybox: true,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="一个DaemonSet确保所有（或部分）节点上运行pod的副本，随着节点添加到群集中，将添加Pod。随着节点从群集中删除，这些Pod将被垃圾回收清理，删除DaemonSet将清除它创建的Pod。 DaemonSet的一些典型用法是：   在每个节点上运行 集群存储后台daemon，例如glusterd，ceph。 在每个节点上运行日志收集守护程序，例如fluentd或logstash。 在每个节点">
+<meta property="og:type" content="article">
+<meta property="og:title" content="k8s DaemonSet 介绍和使用">
+<meta property="og:url" content="https://imdingtalk.github.io/2019/01/29/yuque/k8s DaemonSet 介绍和使用/index.html">
+<meta property="og:site_name" content="不知道叫什么名儿">
+<meta property="og:description" content="一个DaemonSet确保所有（或部分）节点上运行pod的副本，随着节点添加到群集中，将添加Pod。随着节点从群集中删除，这些Pod将被垃圾回收清理，删除DaemonSet将清除它创建的Pod。 DaemonSet的一些典型用法是：   在每个节点上运行 集群存储后台daemon，例如glusterd，ceph。 在每个节点上运行日志收集守护程序，例如fluentd或logstash。 在每个节点">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2020-01-05T07:27:05.524Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="k8s DaemonSet 介绍和使用">
+<meta name="twitter:description" content="一个DaemonSet确保所有（或部分）节点上运行pod的副本，随着节点添加到群集中，将添加Pod。随着节点从群集中删除，这些Pod将被垃圾回收清理，删除DaemonSet将清除它创建的Pod。 DaemonSet的一些典型用法是：   在每个节点上运行 集群存储后台daemon，例如glusterd，ceph。 在每个节点上运行日志收集守护程序，例如fluentd或logstash。 在每个节点">
+
+
+
+
+
+
+  <link rel="canonical" href="https://imdingtalk.github.io/2019/01/29/yuque/k8s DaemonSet 介绍和使用/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>k8s DaemonSet 介绍和使用 | 不知道叫什么名儿</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">不知道叫什么名儿</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <h1 class="site-subtitle" itemprop="description">善始者众 善终者寡</h1>
+      
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-guestbook">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/guestbook" rel="section"><i class="menu-item-icon fa fa-fw fa-heartbeat"></i> <br>留言板</a>
+
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br>搜索</a>
+        </li>
+      
+    </ul>
+  
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off" placeholder="搜索..." spellcheck="false" type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://imdingtalk.github.io/2019/01/29/yuque/k8s DaemonSet 介绍和使用/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="I'm Jack biao">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不知道叫什么名儿">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h2 class="post-title" itemprop="name headline">k8s DaemonSet 介绍和使用
+
+              
+            
+          </h2>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-01-29 08:21:05" itemprop="dateCreated datePublished" datetime="2019-01-29T08:21:05+00:00">2019-01-29</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2020-01-05 07:27:05" itemprop="dateModified" datetime="2020-01-05T07:27:05+00:00">2020-01-05</time>
+              
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/01/29/yuque/k8s DaemonSet 介绍和使用/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2019/01/29/yuque/k8s DaemonSet 介绍和使用/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+            <span id="/2019/01/29/yuque/k8s DaemonSet 介绍和使用/" class="leancloud_visitors" data-flag-title="k8s DaemonSet 介绍和使用">
+              <span class="post-meta-divider">|</span>
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              
+                <span class="post-meta-item-text">阅读次数：</span>
+              
+                <span class="leancloud-visitors-count"></span>
+            </span>
+          
+
+          
+
+          
+            <div class="post-symbolscount">
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">本文字数：</span>
+                
+                <span title="本文字数">13k</span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">12 分钟</span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>一个<em>DaemonSet</em>确保所有（或部分）节点上运行pod的副本，随着节点添加到群集中，将添加Pod。随着节点从群集中删除，这些Pod将被垃圾回收清理，删除DaemonSet将清除它创建的Pod。</p>
+<p>DaemonSet的一些典型用法是： </p>
+<ul>
+<li>在每个节点上运行 集群存储后台daemon，例如glusterd，ceph。</li>
+<li>在每个节点上运行日志收集守护程序，例如fluentd或logstash。</li>
+<li>在每个节点上运行节点监控守护进程，比如  <a href="https://github.com/prometheus/node_exporter" target="_blank" rel="noopener">Prometheus Node Exporte</a></li>
+</ul>
+<p>在一个简单的例子中，覆盖所有节点的一个DaemonSet将用于每种类型的守护进程。更复杂的设置可能会为单一类型的守护程序使用多个DaemonSet，但对不同的硬件类型使用不同的flags 和/或 不同的内存和CPU请求。</p>
+<p><a name="d9a9cb0d"></a></p>
+<h2 id="编写DaemonSet"><a href="#编写DaemonSet" class="headerlink" title="编写DaemonSet"></a>编写DaemonSet</h2><p><a name="19f878c2"></a></p>
+<h3 id="创建一个守护进程集"><a href="#创建一个守护进程集" class="headerlink" title="创建一个守护进程集"></a>创建一个守护进程集</h3><p>在yaml文件中描述daemonSet,一个运行fluentd-elasticsearch Docker的yaml文件如下：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">DaemonSet</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">fluentd-elasticsearch</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">kube-system</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">k8s-app:</span> <span class="string">fluentd-logging</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">name:</span> <span class="string">fluentd-elasticsearch</span></span><br><span class="line">  <span class="attr">template:</span></span><br><span class="line">    <span class="attr">metadata:</span></span><br><span class="line">      <span class="attr">labels:</span></span><br><span class="line">        <span class="attr">name:</span> <span class="string">fluentd-elasticsearch</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">tolerations:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">key:</span> <span class="string">node-role.kubernetes.io/master</span></span><br><span class="line">        <span class="attr">effect:</span> <span class="string">NoSchedule</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">fluentd-elasticsearch</span></span><br><span class="line">        <span class="attr">image:</span> <span class="string">k8s.gcr.io/fluentd-elasticsearch:1.20</span></span><br><span class="line">        <span class="attr">resources:</span></span><br><span class="line">          <span class="attr">limits:</span></span><br><span class="line">            <span class="attr">memory:</span> <span class="string">200Mi</span></span><br><span class="line">          <span class="attr">requests:</span></span><br><span class="line">            <span class="attr">cpu:</span> <span class="string">100m</span></span><br><span class="line">            <span class="attr">memory:</span> <span class="string">200Mi</span></span><br><span class="line">        <span class="attr">volumeMounts:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">varlog</span></span><br><span class="line">          <span class="attr">mountPath:</span> <span class="string">/var/log</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">varlibdockercontainers</span></span><br><span class="line">          <span class="attr">mountPath:</span> <span class="string">/var/lib/docker/containers</span></span><br><span class="line">          <span class="attr">readOnly:</span> <span class="literal">true</span></span><br><span class="line">      <span class="attr">terminationGracePeriodSeconds:</span> <span class="number">30</span></span><br><span class="line">      <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">varlog</span></span><br><span class="line">        <span class="attr">hostPath:</span></span><br><span class="line">          <span class="attr">path:</span> <span class="string">/var/log</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">varlibdockercontainers</span></span><br><span class="line">        <span class="attr">hostPath:</span></span><br><span class="line">          <span class="attr">path:</span> <span class="string">/var/lib/docker/containers</span></span><br></pre></td></tr></table></figure>
+<p>基于YAML文件创建DaemonSet: <code>kubectl create -f  daemonset.yaml</code><br><a name="14d637d5"></a></p>
+<h3 id="必填字段"><a href="#必填字段" class="headerlink" title="必填字段"></a>必填字段</h3><p>和其他所有Kubernetes配置一样，DaemonSet需要apiVersion，kind和metadata字段<br><a name="52361096"></a></p>
+<h3 id="Pod模板"><a href="#Pod模板" class="headerlink" title="Pod模板"></a>Pod模板</h3><p>.spec.template是.spec中必需的字段之一。<br>.spec.template是一个pod模板，作为一个pod，他有完全相同的架构，除了没有apiVersion或kind，因为他是嵌套在daemonSet里面的模板。除了Pod的必需字段之外，DaemonSet中的Pod模板还必须指定适当的标签<br>DaemonSet中的Pod模板RestartPolicy必须为Always，或者未指定，默认为Always<br><a name="c6a7f07c"></a></p>
+<h3 id="Pod选择器"><a href="#Pod选择器" class="headerlink" title="Pod选择器"></a>Pod选择器</h3><p>.spec.selector字段是一个pod选择器。它的工作方式与Job的.spec.selector相同。<br>从Kubernetes 1.8开始，您必须指定与.spec.template标签匹配的pod选择器。当为空时，pod选择器将不再默认。Selector 默认与kubectl apply不兼容。此外，一旦创建了DaemonSet，其.spec.selector就无法改变。改变pod选择器可能导致Pod的孤立，并且发现它对用户来说是困难的。<br>.spec.selector是一个由两个字段组成的对象：<br>matchLabels   – 与ReplicationController的.spec.selector相同。<br>matchExpressions  - 允许通过指定键，值列表以及与键和值相关的运算符来构建更复杂的选择器。<br>指定两者时，结果为AND<br>如果指定了.spec.selector，则它必须与.spec.template.metadata.labels匹配。具有这些不匹配的配置将被API拒绝。<br>此外，您通常不应直接创建任何标签与此选择器匹配的Pod，可以通过另一个DaemonSet或通过其他控制器（如ReplicaSet）创建。否则，DaemonSet控制器会认为这些Pod是由它创建的。Kubernetes不会阻止你这样做。您可能希望这样做的一种情况是在节点上手动创建具有不同值的Pod以进行测试。<br><a name="18e8ac9e"></a></p>
+<h3 id="仅在某些节点上运行Pod"><a href="#仅在某些节点上运行Pod" class="headerlink" title="仅在某些节点上运行Pod"></a>仅在某些节点上运行Pod</h3><p>如果指定.spec.template.spec.nodeSelector，则DaemonSet控制器将在与该节点选择器匹配的节点上创建Pod。同样，如果指定.spec.template.spec.affinity，则DaemonSet控制器将在与该节点关联相匹配的节点上创建Pod。如果您未指定任何一个，则DaemonSet控制器将在所有节点上创建Pod。<br><a name="3ed57661"></a></p>
+<h2 id="Daemon-Pods如何调度"><a href="#Daemon-Pods如何调度" class="headerlink" title="Daemon Pods如何调度"></a>Daemon Pods如何调度</h2><p><a name="6ee2fd52"></a></p>
+<h3 id="由DaemonSet控制器调度（默认情况下自1-12起禁用）"><a href="#由DaemonSet控制器调度（默认情况下自1-12起禁用）" class="headerlink" title="由DaemonSet控制器调度（默认情况下自1.12起禁用）"></a>由DaemonSet控制器调度（默认情况下自1.12起禁用）</h3><p>通常，Pod运行的机器由Kubernetes调度程序选择。但是，由DaemonSet控制器创建的Pod已经选择了机器（在创建Pod时指定了.spec.nodeName，因此调度程序会忽略它）。因此：</p>
+<ul>
+<li>DaemonSet控制器不遵守节点的不可调度字段</li>
+<li><p>即使尚未启动调度程序，DaemonSet控制器也可以生成Pod，这可以帮助集群引导程序<br><a name="455103af"></a></p>
+<h3 id="默认调度程序调度（自1-12起默认启用）"><a href="#默认调度程序调度（自1-12起默认启用）" class="headerlink" title="默认调度程序调度（自1.12起默认启用）"></a>默认调度程序调度（自1.12起默认启用）</h3><p>特征状态：Kubernetes v1.13 beta<br>DaemonSet确保所有符合条件的节点都运行Pod的副本。通常，Kubernetes调度程序选择Pod运行的节点。但是，DaemonSet控件是由DaemonSet控制器创建和调度的。这引入了以下问题：</p>
+</li>
+<li><p>不一致的Pod行为：等待安排的正常Pod已创建并处于Pending状态，但DaemonSet pod未在Pending状态下创建。这使用户感到困惑</p>
+</li>
+<li>Pod抢占由默认调度程序处理。启用抢占后，DaemonSet控制器将在不考虑pod优先级和抢占的情况下制定调度决策</li>
+</ul>
+<p>ScheduleDaemonSetPods允许您使用默认调度程序而不是DaemonSet控制器来调度DaemonSet，方法是将NodeAffinity项添加到DaemonSet窗格，而不是.spec.nodeName项。然后使用默认调度程序将pod绑定到目标主机。如果DaemonSet pod的节点关联已存在，则替换它。DaemonSet控制器仅在创建或修改DaemonSet窗格时执行这些操作，并且不对DaemonSet的spec.template进行任何更改。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">nodeAffinity:</span></span><br><span class="line">  <span class="attr">requiredDuringSchedulingIgnoredDuringExecution:</span></span><br><span class="line">    <span class="attr">nodeSelectorTerms:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">matchFields:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">key:</span> <span class="string">metadata.name</span></span><br><span class="line">        <span class="attr">operator:</span> <span class="string">In</span></span><br><span class="line">        <span class="attr">values:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">target-host-name</span></span><br></pre></td></tr></table></figure>
+<p>此外，node.kubernetes.io/unschedulable:NoSchedule容错会自动添加到DaemonSet Pods。在调度DaemonSet Pod时，默认调度程序会忽略不可调度的节点。<br><a name="eb1dd5c2"></a></p>
+<h3 id="污点和容忍"><a href="#污点和容忍" class="headerlink" title="污点和容忍"></a>污点和容忍</h3><p>尽管Daemon Pods尊重污点和容忍度，但根据相关功能，DaemonSet Pods会自动添加以下容差</p>
+<table>
+<thead>
+<tr>
+<th>容忍key</th>
+<th>操作</th>
+<th>版本</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>node.kubernetes.io/not-ready</code></td>
+<td>NoExecute</td>
+<td>1.13+</td>
+<td>当存在诸如网络分区之类的节点问题时，不会驱逐DaemonSet pod。</td>
+</tr>
+<tr>
+<td><code>node.kubernetes.io/unreachable</code></td>
+<td>NoExecute</td>
+<td>1.13+</td>
+<td>当存在诸如网络分区之类的节点问题时，不会驱逐DaemonSet pod。</td>
+</tr>
+<tr>
+<td><code>node.kubernetes.io/disk-pressure</code></td>
+<td>NoSchedule</td>
+<td>1.8+</td>
+<td></td>
+</tr>
+<tr>
+<td><code>node.kubernetes.io/memory-pressure</code></td>
+<td>NoSchedule</td>
+<td>1.8+</td>
+<td></td>
+</tr>
+<tr>
+<td><code>node.kubernetes.io/unschedulable</code></td>
+<td>NoSchedule</td>
+<td>1.12+</td>
+<td>DaemonSet pods可以通过默认调度程序容忍不可调度的属性。</td>
+</tr>
+<tr>
+<td><code>node.kubernetes.io/network-unavailable</code><br></td>
+<td>NoSchedule</td>
+<td>1.12+</td>
+<td>使用主机网络的DaemonSet pod可以通过默认调度程序容忍网络不可用的属性。</td>
+</tr>
+</tbody>
+</table>
+<p><a name="d41d8cd9"></a></p>
+<p>###<br><a name="c7c4ac4e"></a></p>
+<h3 id="与Daemon-Pods进行通信"><a href="#与Daemon-Pods进行通信" class="headerlink" title="与Daemon Pods进行通信"></a>与Daemon Pods进行通信</h3><ul>
+<li>在DaemonSet中与Pod通信的一些可能模式是：</li>
+<li>推送：DaemonSet中的Pod配置为将更新发送到另一个服务，例如统计数据库。他们没有客户端。</li>
+<li>NodeIP和已知端口：DaemonSet中的Pod可以使用hostPort，以便可以通过节点IP访问pod。客户端以某种方式知道节点IP列表，并按惯例了解端口。</li>
+<li>DNS：使用相同的pod选择器创建无头服务，然后使用端点资源发现DaemonSet并从DNS检索多个A记录。</li>
+<li>服务：使用相同的Pod选择器创建服务，并使用该服务在随机节点上访问守护程序。（无法到达特定节点）<br><a name="1061b80e"></a><h3 id="更新DaemonSet"><a href="#更新DaemonSet" class="headerlink" title="更新DaemonSet"></a>更新DaemonSet</h3>如果更改了节点标签，DaemonSet将立即将Pod添加到新匹配的节点，并从新匹配的节点中删除Pod。<br>您可以修改DaemonSet创建的Pod。但是，Pod不允许更新所有字段。此外，DaemonSet控制器将在下次创建节点（甚至具有相同名称）时使用原始模板。<br>您可以删除DaemonSet。如果使用kubectl指定–cascade = false，则Pod将保留在节点上。然后，您可以使用不同的模板创建新的DaemonSet。具有不同模板的新DaemonSet会将所有现有Pod识别为具有匹配标签。尽管Pod模板不匹配，它也不会修改或删除它们。您需要通过删除Pod或删除节点来强制创建新的Pod。<br>在Kubernetes 1.6及更高版本中，您可以在DaemonSet上执行滚动更新。</li>
+</ul>
+<p><a name="d17a0f0b"></a></p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/#" target="_blank" rel="noopener">DaemonSet</a></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>如果你觉得本文对你有帮助，或者想对我微小的工作一点资瓷，欢迎给我捐赠</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/wechat.png" alt="I'm Jack biao 微信支付">
+        <p>微信支付</p>
+      </div>
+    
+
+    
+      <div id="alipay" style="display: inline-block">
+        <img id="alipay_qr" src="/images/alipay.png" alt="I'm Jack biao 支付宝">
+        <p>支付宝</p>
+      </div>
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/01/20/yuque/使用kubeadm创建一个高可用的集群/" rel="next" title="使用kubeadm创建一个高可用的集群">
+                <i class="fa fa-chevron-left"></i> 使用kubeadm创建一个高可用的集群
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/02/11/yuque/vps 端口被墙的解决办法/" rel="prev" title="vps 端口被墙的解决办法">
+                vps 端口被墙的解决办法 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">I'm Jack biao</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">54</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">4</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">9</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/imdingtalk" title="GitHub &rarr; https://github.com/imdingtalk" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:dinghahat9458@gmail.com" title="E-Mail &rarr; mailto:dinghahat9458@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-NoName"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#编写DaemonSet"><span class="nav-number">1.</span> <span class="nav-text">编写DaemonSet</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#创建一个守护进程集"><span class="nav-number">1.1.</span> <span class="nav-text">创建一个守护进程集</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#必填字段"><span class="nav-number">1.2.</span> <span class="nav-text">必填字段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod模板"><span class="nav-number">1.3.</span> <span class="nav-text">Pod模板</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod选择器"><span class="nav-number">1.4.</span> <span class="nav-text">Pod选择器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#仅在某些节点上运行Pod"><span class="nav-number">1.5.</span> <span class="nav-text">仅在某些节点上运行Pod</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Daemon-Pods如何调度"><span class="nav-number">2.</span> <span class="nav-text">Daemon Pods如何调度</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#由DaemonSet控制器调度（默认情况下自1-12起禁用）"><span class="nav-number">2.1.</span> <span class="nav-text">由DaemonSet控制器调度（默认情况下自1.12起禁用）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#默认调度程序调度（自1-12起默认启用）"><span class="nav-number">2.2.</span> <span class="nav-text">默认调度程序调度（自1.12起默认启用）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#污点和容忍"><span class="nav-number">2.3.</span> <span class="nav-text">污点和容忍</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#与Daemon-Pods进行通信"><span class="nav-number">2.4.</span> <span class="nav-text">与Daemon Pods进行通信</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#更新DaemonSet"><span class="nav-number">2.5.</span> <span class="nav-text">更新DaemonSet</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+        <div class="back-to-top">
+          <i class="fa fa-arrow-up"></i>
+          
+            <span id="scrollpercent"><span>0</span>%</span>
+          
+        </div>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-heartbeat"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">I'm Jack biao</span>
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    
+      <span class="post-meta-item-text">站点总字数：</span>
+    
+    <span title="站点总字数">93k</span>
+  
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    
+    <span title="站点阅读时长">1:25</span>
+  
+</div>
+
+
+
+
+
+
+
+
+<span id="timeDate">载入天数...</span><span id="times">载入时分秒...</span>
+<script>
+    var now = new Date(); 
+    function createtime() { 
+        var grt= new Date("10/01/2018 17:20:00");
+        now.setTime(now.getTime()+250); 
+        days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days); 
+        hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours); 
+        if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum); 
+        mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;} 
+        seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum); 
+        snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;} 
+        document.getElementById("timeDate").innerHTML = "本站已安全运行 "+dnum+" 天 "; 
+        document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒"; 
+    } 
+setInterval("createtime()",250);
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js">
+</script>
+本站总访问量<span id="busuanzi_value_site_pv"></span>次
+您是小站的第<span id="busuanzi_value_site_uv"></span>个小伙伴
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+  
+    
+    
+      
+    
+  
+  <script color="0,0,255" opacity="0.5" zindex="-1" count="99" src="//cdn.jsdelivr.net/gh/theme-next/theme-next-canvas-nest@1.0.0/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=6.7.0"></script>
+
+  <script src="/js/src/motion.js?v=6.7.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=6.7.0"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=6.7.0"></script>
+
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=6.7.0"></script>
+<script src="/js/src/post-details.js?v=6.7.0"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=6.7.0"></script>
+
+
+
+  
+  
+
+
+
+
+  
+
+<script src="//cdn1.lncld.net/static/js/3.11.1/av-min.js"></script>
+
+
+
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+
+<script>
+  var GUEST = ['nick', 'mail', 'link'];
+  var guest = 'nick,mail';
+  guest = guest.split(',').filter(function (item) {
+    return GUEST.indexOf(item) > -1;
+  });
+  new Valine({
+    el: '#comments',
+    verify: false,
+    notify: false,
+    appId: 'YsnVS7bjx1fXUBde0DpJXsHz-MdYXbMMI',
+    appKey: 'UeHdDHsbsKoE39s4ME4GnSFc',
+    placeholder: '欢迎评论，指正，俺会回复哒',
+    avatar: 'mm',
+    meta: guest,
+    pageSize: '10' || 10,
+    visitor: true
+  });
+</script>
+
+
+
+  
+
+  <script>
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url).replace(/\/{2,}/g, '/');
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x"></i></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x"></i></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  <!--打字特效-->
+  
+
+  <script src="/js/activate-power-mode.min.js"></script>
+  <script>
+    POWERMODE.colorful = true;
+    POWERMODE.shake = true;
+    document.body.addEventListener('input', POWERMODE);
+  </script>
+
+
+  <!--崩溃欺骗-->
+  <script type="text/javascript" src="/js/src/crash_cheat.js"></script>
+</body>
+</html>
